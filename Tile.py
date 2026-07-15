@@ -1,33 +1,38 @@
+import pygame
 from utilities import load_image
-import pygame,os
-from pygame.locals import *
+
+# Tile type to image mapping
+TILE_IMAGES = {
+    'grass': 'tile_grass.jpg',
+    'hole': 'tile_hole.png',
+    'water': 'tile_water.gif'
+}
+
+TILE_BORDER_COLOR = (250, 0, 0)
+
 
 class Tile:
-    def __init__(self,column,row,type, image_name=None, parent=None):
-        self.image_name = None
-        if not image_name:
-            if type == 'grass':
-                self.image_name = 'tile_grass.jpg'
-            elif type == 'hole':
-                self.image_name = 'tile_hole.png'
-            elif type == 'water':
-                self.image_name = 'tile_water.gif'
-        else:
-            self.image_name = image_name   #имя картинки
-        self.image = load_image(self.image_name, path='Images/Tiles')  #сама картинка
-        self.transparent_image = load_image('transparent_tile.png',path='Images', alpha_channel=True)  #прозрачная картинка, которая накладывается поверх тайла
-        self.rect = self.image.get_rect()  #рект картинки
-        self.column = column  #столбик, в котором находится тайл
-        self.row = row  #строка, в которой находится тайл
-        self.type = type #тип тайла
-        self.transparent = False  #показатель невидимости. False - тайл видимый
-        x = column*self.rect.w     #координата х тайла равна номер столбика умножить на ширину картинки тайла
-        y = row*self.rect.h        #координата у тайла равна номер строки умножить на высоту картинки тайла
-        self.rect.x = x
-        self.rect.y = y
+    def __init__(self, column, row, tile_type, image_name=None, parent=None):
+        self.column = column
+        self.row = row
+        self.type = tile_type
+        self.parent = parent
+        self.transparent = False
+        
+        # Set image name
+        self.image_name = image_name or TILE_IMAGES.get(tile_type, image_name)
+        
+        # Load images
+        self.image = load_image(self.image_name, path='Images/Tiles')
+        self.transparent_image = load_image('transparent_tile.png', path='Images', alpha_channel=True)
+        
+        # Set rect position
+        self.rect = self.image.get_rect()
+        self.rect.x = column * self.rect.w
+        self.rect.y = row * self.rect.h
 
     def __repr__(self):
-        return "Tile %s|%s type:%s, coord(%s,%s)"%(self.column, self.row, self.type, self.rect.x,self.rect.y)
+        return f"Tile {self.column}|{self.row} type:{self.type}, coord({self.rect.x},{self.rect.y})"
 
     def get_type(self):
         return self.type
@@ -35,61 +40,56 @@ class Tile:
     def get_size(self):
         return self.rect.size
 
-    def get_coord(self):             #получение координат
-        return (self.rect.x,self.rect.y)
+    def get_coord(self):
+        return self.rect.x, self.rect.y
 
-    def check_mouse_coords(self, xy):           #проверяет, находятся ли координаты мыши в ректе картинки
-        if self.rect.collidepoint(xy):
-            return True
-        else:
-            return False
+    def check_mouse_coords(self, xy):
+        return self.rect.collidepoint(xy)
 
-    def change_image(self,status):  #меняет картинка на картинку с тайлом прозрачности и обратно
-        if status=='on' and not self.transparent:  #status - если 'on', то картинка делается невидимой, и если тайл еще не невидимый
-            self.image.blit(self.transparent_image,(0,0))
+    def change_image(self, status):
+        if status == 'on' and not self.transparent:
+            self.image.blit(self.transparent_image, (0, 0))
             self.transparent = True
-        elif status=='off':
-            self.image = load_image(self.image_name,path='Images/Tiles', alpha_channel=True)
+        elif status == 'off':
+            self.image = load_image(self.image_name, path='Images/Tiles', alpha_channel=True)
             self.transparent = False
 
-    def get_type_typetile(self):       #тип типа тайла (проходимый или нет)
-        if self.type == 'grass':
-            return True
-        else:
-            return False
+    def is_walkable(self):
+        return self.type == 'grass'
 
-    def render(self,surf,coord=None):
-        x = self.column*self.rect.w   #здесь не подходят координаты ректа, потому что координаты ректа - это координаты относительно всего окна
-        y = self.row*self.rect.h      #поэтому тут считаются координаты исходя ТОЛЬКО из столбца и строки
-
+    def render(self, surf, coord=None):
+        x = self.column * self.rect.w
+        y = self.row * self.rect.h
+        
         if coord:
-            x, y = coord[0], coord[1]
-        surf.blit(self.image,(x,y))   #и блитуются на поверхность поля.
+            x, y = coord
+        
+        surf.blit(self.image, (x, y))
+        
+        # Draw tile border
+        self._draw_border(surf, x, y)
 
-        #а это рисовашки, чтобы каждый тайл был обведен
-        pygame.draw.lines(surf,(250,0,0),True, [(self.rect.x, self.rect.y),
-                                        (self.rect.x+self.rect.w,self.rect.y),
-                                        (self.rect.x+self.rect.w,self.rect.y+self.rect.h),
-                                        (self.rect.x,self.rect.y+self.rect.h)])
+    def _draw_border(self, surf, x, y):
+        w, h = self.rect.w, self.rect.h
+        pygame.draw.lines(surf, TILE_BORDER_COLOR, True, [
+            (x, y),
+            (x + w, y),
+            (x + w, y + h),
+            (x, y + h)
+        ])
 
-class Tile_Brush(Tile):
-    def __init__(self,column,row,type,image_name,parent=None):
-        Tile.__init__(self,column,row,type,image_name,parent)
-        self.brush = False          #если флаг активен, значит, данный тайл является кистью
-        self.parent = parent
 
-    def check_mouse_coords(self,xy):           #проверяет, находятся ли координаты мыши в нужном ректе
-        if self.rect.collidepoint(xy):
-            return True
-        else:
-            return False
+class TileBrush(Tile):
+    def __init__(self, column, row, tile_type, image_name, parent=None):
+        super().__init__(column, row, tile_type, image_name, parent)
+        self.brush = False
 
-    def event(self,e):
-        if e.type == pygame.MOUSEBUTTONDOWN:
-            coord = self.parent.cursor_coord
-            if self.check_mouse_coords(coord):
-                self.brush = True
-                # print('True')
+    def check_mouse_coords(self, xy):
+        return self.rect.collidepoint(xy)
+
+    def event(self, e):
+        if e.type == pygame.MOUSEBUTTONDOWN and self.check_mouse_coords(self.parent.cursor_coord):
+            self.brush = True
 
     def get_brush(self):
-        return ('tile',self.type)
+        return 'tile', self.type
