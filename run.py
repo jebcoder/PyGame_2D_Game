@@ -1,8 +1,8 @@
-from utilities import *
+import utilities
 from parsers import load_data
-from Field import *
+import Field
 from Unit import *
-from settings import *
+import settings
 from Buttons import Button
 import pygame
 
