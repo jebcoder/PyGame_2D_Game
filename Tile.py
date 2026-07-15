@@ -1,6 +1,5 @@
 from utilities import load_image
-import pygame,os
-from pygame.locals import *
+from pygame import pygame.MOUSEBUTTONDOWN, pygame.draw.lines
 
 class Tile:
     def __init__(self,column,row,type, image_name=None, parent=None):
